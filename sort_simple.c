@@ -6,7 +6,7 @@
 /*   By: gbaccell <gbaccell@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/17 15:00:00 by gbaccell         ###   ########.fr       */
+/*   Updated: 2026/11/18 13:41:01 by gbaccell         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,4 +30,13 @@
 ** Com disorder baixo o menor quase sempre ja esta perto do topo,
 ** por isso o adaptive usa este para disorder < 0.2.
 */
-void	sort_simple(t_ctx *ctx);
+void	sort_simple(t_ctx *ctx)
+{
+	while (ctx->a->size > 0)
+	{
+		bring_to_top_a(ctx, find_min_pos(ctx->a));
+		pb(ctx);
+	}
+	while (ctx->b->size > 0)
+		pa(ctx);
+}

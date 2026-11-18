@@ -51,4 +51,13 @@ void	sort_with(t_ctx *ctx, t_strat strat);
 **   4. se cfg->bench -> print_bench(ctx, cfg->strat, used, dis);
 **      (o bench aparece mesmo com a pilha ja ordenada: 0 operacoes)
 */
-void	run_push_swap(t_ctx *ctx, t_cfg *cfg);
+void	run_push_swap(t_ctx *ctx, t_cfg *cfg)
+{
+	(void)cfg;
+	if (is_sorted(ctx->a))
+		return ;
+	if (ctx->a->size <= 5)
+		sort_small(ctx);
+	else
+		sort_simple(ctx);
+}

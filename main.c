@@ -66,6 +66,7 @@ int	main(int argc, char **argv)
 		return (0);
 	if (!parse_args(argv, start, &a))
 		error_exit(&ctx);
+	run_push_swap(&ctx, &cfg);
 	free_stack(&a);
 	free_stack(&b);
 	return (0);

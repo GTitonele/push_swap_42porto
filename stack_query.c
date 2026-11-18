@@ -6,7 +6,7 @@
 /*   By: gbaccell <gbaccell@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/17 18:28:38 by gbaccell         ###   ########.fr       */
+/*   Updated: 2026/11/18 14:43:25 by gbaccell         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,7 +105,7 @@ int	get_max(t_stack *s)
 	t_node	*node;
 	int		i;
 	int		max;
-	
+
 	node = s->top;
 	i = 0;
 	max = node->content;
