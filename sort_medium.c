@@ -6,7 +6,7 @@
 /*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/19 18:17:46 by guilherme        ###   ########.fr       */
+/*   Updated: 2026/11/19 19:25:01 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@
 ** Ajustar com um fator (ex.: r * 2) para gastar menos operacoes,
 ** sem deixar de ser proporcional a sqrt(n).
 */
-int		chunk_size(int n)
+int	chunk_size(int n)
 {
 	int	r;
 

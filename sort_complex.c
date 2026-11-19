@@ -6,7 +6,7 @@
 /*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/19 16:28:58 by guilherme        ###   ########.fr       */
+/*   Updated: 2026/11/19 19:25:09 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@
 **   bits = 0; while ((max >> bits) != 0) bits++;
 ** Ex.: max = 99 -> 7 bits | max = 499 -> 9 bits
 */
-int		max_bits(int max)
+int	max_bits(int max)
 {
 	int	bits;
 

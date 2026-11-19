@@ -6,7 +6,7 @@
 /*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/19 16:11:57 by guilherme        ###   ########.fr       */
+/*   Updated: 2026/11/19 19:25:42 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@
 ** stack_to_array: copia os valores da pilha (do topo ao fundo) para um
 ** array novo com malloc. Retorna NULL se o malloc falhar.
 */
-int		*stack_to_array(t_stack *a)
+int	*stack_to_array(t_stack *a)
 {
 	int		*arr;
 	t_node	*node;
@@ -90,23 +90,23 @@ void	sort_array(int *arr, int size)
 static int	find_index(int *arr, int size, int value)
 {
 	int	k;
-	
+
 	k = 0;
 	while (k < size)
 	{
 		if (arr[k] == value)
-			return(k);
+			return (k);
 		k++;
 	}
 	return (-1);
 }
 
-int		normalize(t_stack *a)
+int	normalize(t_stack *a)
 {
 	int		*arr;
 	t_node	*node;
 	int		i;
-	
+
 	arr = stack_to_array(a);
 	if (!arr)
 		return (0);

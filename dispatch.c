@@ -6,7 +6,7 @@
 /*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/19 18:22:43 by guilherme        ###   ########.fr       */
+/*   Updated: 2026/11/19 19:02:07 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ t_strat	resolve_strat(t_strat strat, double dis)
 		return (STRAT_SIMPLE);
 	if (dis < 0.5)
 		return (STRAT_MEDIUM);
-	return (strat)
+	return (STRAT_COMPLEX);
 }
 
 /*
@@ -45,7 +45,17 @@ t_strat	resolve_strat(t_strat strat, double dis)
 ** Decidam (e expliquem no README) se o sort_small vale para todas as
 ** estrategias ou so para a adaptive.
 */
-void	sort_with(t_ctx *ctx, t_strat strat);
+void	sort_with(t_ctx *ctx, t_strat strat)
+{
+	if (ctx->a->size <= 5)
+		sort_small(ctx);
+	else if (strat == STRAT_SIMPLE)
+		sort_simple(ctx);
+	else if (strat == STRAT_MEDIUM)
+		sort_medium(ctx);
+	else
+		sort_complex(ctx);
+}
 
 /*
 ** run_push_swap: tudo o que acontece DEPOIS do parsing.
@@ -62,11 +72,17 @@ void	sort_with(t_ctx *ctx, t_strat strat);
 */
 void	run_push_swap(t_ctx *ctx, t_cfg *cfg)
 {
-	(void)cfg;
-	if (is_sorted(ctx->a))
-		return ;
-	if (ctx->a->size <= 5)
-		sort_small(ctx);
-	else
-		sort_simple(ctx);
+	double	dis;
+	t_strat	used;
+
+	dis = disorder(ctx->a);
+	used = resolve_strat(cfg->strat, dis);
+	if (!is_sorted(ctx->a))
+	{
+		if (!normalize(ctx->a))
+			error_exit(ctx);
+		sort_with(ctx, used);
+	}
+	if (cfg->bench)
+		print_bench(ctx, cfg->strat, used, dis);
 }
