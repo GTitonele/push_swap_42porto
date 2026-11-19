@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   dispatch.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: gbaccell <gbaccell@student.42.fr>          +#+  +:+       +#+        */
+/*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/17 15:00:00 by gbaccell         ###   ########.fr       */
+/*   Updated: 2026/11/19 18:22:43 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,16 @@
 ** Obs.: com pouca desordem o O(n^2) e barato, pois quase nao precisa
 ** rotacionar. Essa justificativa tem que ir para o README.
 */
-t_strat	resolve_strat(t_strat strat, double dis);
+t_strat	resolve_strat(t_strat strat, double dis)
+{
+	if (strat != STRAT_ADAPTIVE)
+		return (strat);
+	if (dis < 0.2)
+		return (STRAT_SIMPLE);
+	if (dis < 0.5)
+		return (STRAT_MEDIUM);
+	return (strat)
+}
 
 /*
 ** sort_with: chama o algoritmo correspondente a estrategia REAL.

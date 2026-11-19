@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   sort_medium.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: gbaccell <gbaccell@student.42.fr>          +#+  +:+       +#+        */
+/*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/17 15:00:00 by gbaccell         ###   ########.fr       */
+/*   Updated: 2026/11/19 18:17:46 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,15 @@
 ** Ajustar com um fator (ex.: r * 2) para gastar menos operacoes,
 ** sem deixar de ser proporcional a sqrt(n).
 */
-int		chunk_size(int n);
+int		chunk_size(int n)
+{
+	int	r;
+
+	r = 1;
+	while ((r + 1) * (r + 1) <= n)
+		r++;
+	return (r * 2);
+}
 
 /*
 ** push_chunks: fase 1, manda tudo de a para b por faixas.
@@ -39,7 +47,30 @@ int		chunk_size(int n);
 **     - senao              -> ra            (ainda nao e a vez dele)
 ** Resultado: b fica "quase ordenada", com os maiores perto do topo.
 */
-void	push_chunks(t_ctx *ctx, int range);
+void	push_chunks(t_ctx *ctx, int range)
+{
+	int	i;
+	int	top;
+
+	i = 0;
+	while (ctx->a->size > 0)
+	{
+		top = ctx->a->top->content;
+		if (top <= i)
+		{
+			pb(ctx);
+			rb(ctx);
+			i++;
+		}
+		else if (top <= i + range)
+		{
+			pb(ctx);
+			i++;
+		}
+		else
+			ra(ctx);
+	}
+}
 
 /*
 ** push_back_max: fase 2, devolve tudo para a.
@@ -47,7 +78,14 @@ void	push_chunks(t_ctx *ctx, int range);
 **     bring_to_top_b(ctx, find_max_pos(ctx->b)); pa(ctx);
 ** Sempre devolvendo o maior, a termina ordenada.
 */
-void	push_back_max(t_ctx *ctx);
+void	push_back_max(t_ctx *ctx)
+{
+	while (ctx->b->size > 0)
+	{
+		bring_to_top_b(ctx, find_max_pos(ctx->b));
+		pa(ctx);
+	}
+}
 
 /*
 ** sort_medium: push_chunks(ctx, chunk_size(ctx->a->size));
@@ -58,4 +96,8 @@ void	push_back_max(t_ctx *ctx);
 **   fase 2: o maior de b esta a no maximo ~range do topo  -> O(n*sqrt(n))
 **   Espaco: O(1) extra.
 */
-void	sort_medium(t_ctx *ctx);
+void	sort_medium(t_ctx *ctx)
+{
+	push_chunks(ctx, chunk_size(ctx->a->size));
+	push_back_max(ctx);
+}
