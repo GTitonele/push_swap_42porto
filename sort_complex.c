@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   sort_complex.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: gbaccell <gbaccell@student.42.fr>          +#+  +:+       +#+        */
+/*   By: guilherme <guilherme@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/17 15:00:00 by gbaccell         ###   ########.fr       */
+/*   Updated: 2026/11/19 16:28:58 by guilherme        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,15 @@
 **   bits = 0; while ((max >> bits) != 0) bits++;
 ** Ex.: max = 99 -> 7 bits | max = 499 -> 9 bits
 */
-int		max_bits(int max);
+int		max_bits(int max)
+{
+	int	bits;
+
+	bits = 0;
+	while ((max >> bits) != 0)
+		bits++;
+	return (bits);
+}
 
 /*
 ** radix_pass: uma passada para o bit 'bit'.
@@ -35,7 +43,24 @@ int		max_bits(int max);
 **     senao                                       -> ra
 **   depois: enquanto b nao vazia -> pa
 */
-void	radix_pass(t_ctx *ctx, int bit);
+void	radix_pass(t_ctx *ctx, int bit)
+{
+	int	size;
+	int	i;
+
+	size = ctx->a->size;
+	i = 0;
+	while (i < size)
+	{
+		if (((ctx->a->top->content >> bit) & 1) == 0)
+			pb(ctx);
+		else
+			ra(ctx);
+		i++;
+	}
+	while (ctx->b->size > 0)
+		pa(ctx);
+}
 
 /*
 ** sort_complex: para bit de 0 ate max_bits(get_max(ctx->a)) - 1:
@@ -49,4 +74,16 @@ void	radix_pass(t_ctx *ctx, int bit);
 ** minimo do subject (< 2000 / < 12000); para "excelente" (< 700 /
 ** < 5500) precisa de um algoritmo mais otimizado.
 */
-void	sort_complex(t_ctx *ctx);
+void	sort_complex(t_ctx *ctx)
+{
+	int	bits;
+	int	bit;
+
+	bits = max_bits(get_max(ctx->a));
+	bit = 0;
+	while (bit < bits)
+	{
+		radix_pass(ctx, bit);
+		bit++;
+	}
+}
