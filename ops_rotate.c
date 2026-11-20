@@ -12,9 +12,6 @@
 
 #include "push_swap.h"
 
-/*===================== OPERACOES ROTATE (ra / rb / rr) ======================*/
-
-/* ra: desloca a para cima; o primeiro elemento vira o ultimo. */
 void	ra(t_ctx *ctx)
 {
 	if (ctx->a->size < 2)
@@ -23,7 +20,6 @@ void	ra(t_ctx *ctx)
 	record_op(ctx, OP_RA);
 }
 
-/* rb: desloca b para cima; o primeiro elemento vira o ultimo. */
 void	rb(t_ctx *ctx)
 {
 	if (ctx->b->size < 2)
@@ -32,10 +28,6 @@ void	rb(t_ctx *ctx)
 	record_op(ctx, OP_RB);
 }
 
-/*
-** rr: ra e rb ao mesmo tempo. Imprime apenas "rr"
-** (conta como UMA operacao).
-*/
 void	rr(t_ctx *ctx)
 {
 	rotate(ctx->a);

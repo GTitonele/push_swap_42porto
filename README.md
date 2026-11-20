@@ -40,9 +40,9 @@ The program embeds **four sorting strategies**:
 
 | Strategy | Technique | Complexity (in operations) |
 |---|---|---|
-| `--simple` | Minimum extraction (selection sort) | **O(n²)** |
+| `--simple` | Cheapest insertion ("Turk") | **O(n²)** |
 | `--medium` | Chunk-based sorting (√n chunks) | **O(n√n)** |
-| `--complex` | Binary LSD radix sort | **O(n log n)** |
+| `--complex` | Three-way quicksort over four stack ends | **O(n log n)** |
 | `--adaptive` *(default)* | Chooses one of the above based on the measured disorder | depends on the regime |
 
 It also includes a **benchmark mode** (`--bench`) that reports the disorder, the strategy used, its complexity class and the count of every operation.
@@ -85,7 +85,7 @@ $ ./push_swap --simple 5 4 3 2 1
 # Count the operations
 $ ARG="4 67 3 87 23"; ./push_swap $ARG | wc -l
 
-# Verify the result with the provided checker
+# Verify the result with the checker provided by 42
 $ ARG="4 67 3 87 23"; ./push_swap --complex $ARG | ./checker_linux $ARG
 OK
 
@@ -100,10 +100,10 @@ OK
 
 ```bash
 $ ./push_swap --bench $ARG 2>&1 >/dev/null
-[bench] disorder: 50.35%
+[bench] disorder: 51.16%
 [bench] strategy: Adaptive / O(n log n)
-[bench] total_ops: 6784
-[bench] sa: 0 sb: 0 ss: 0 pa: 2284 pb: 2284 ra: 2216 rb: 0 rr: 0 rra: 0 rrb: 0 rrr: 0
+[bench] total_ops: 4144
+[bench] sa: 124 sb: 0 ss: 0 pa: 951 pb: 951 ra: 512 rb: 506 rr: 197 rra: 446 rrb: 445 rrr: 12
 ```
 
 For the adaptive strategy, the name shows the strategy that was **requested** and the complexity shows the class of the strategy that was **actually used**.
@@ -182,7 +182,7 @@ Before sorting, the values are replaced by their **rank** (0 … n‑1):
 [ 42, -7, 1000, 3 ]  →  [ 2, 0, 3, 1 ]
 ```
 
-The relative order does not change, so the generated operations are identical. It removes negative and very large values, which makes chunks easy to define and lets the radix sort work bit by bit. It uses a temporary array (O(n) space) and is not counted as push_swap operations.
+The relative order does not change, so the generated operations are identical. It removes negative and very large values, which makes chunks easy to define and gives the quicksort exact pivots without searching. It uses a temporary array (O(n) space) and is not counted as push_swap operations.
 
 ### Small inputs (2 to 5 numbers)
 
@@ -192,22 +192,23 @@ For very small stacks, all strategies use dedicated routines:
 - **3 numbers**: put the largest at the bottom (`ra` or `rra`), then `sa` if needed. **At most 2 operations** for all 6 permutations.
 - **4–5 numbers**: push the one or two smallest to `b`, sort the remaining 3, push them back.
 
-### 1️⃣ Simple — Minimum extraction · O(n²)
+### 1️⃣ Simple — Cheapest insertion ("Turk") · O(n²)
 
-An adaptation of **selection sort**:
+An insertion sort in which every element is inserted at the place where it costs the fewest operations:
 
-1. Find the smallest element of `a`.
-2. Bring it to the top by the **shortest path** (`ra` if it is in the upper half, `rra` otherwise).
-3. `pb` it to stack `b`.
-4. Repeat until `a` is empty, then `pa` everything back. The elements return in ascending order.
+1. `pb` two elements, so that `b` has a maximum and a minimum.
+2. While `a` has more than 3 elements: for **every** element of `a`, compute how many rotations are needed to bring it to the top of `a` **and** to bring its target position to the top of `b` (`b` is kept in **descending** order). Four combinations are tried (up/down in each stack); when both stacks rotate in the same direction the shared rotations become `rr`/`rrr`, so the cost is the larger of the two and not the sum. Apply the cheapest one and `pb`.
+3. Sort the last 3 elements of `a` with `sort_three`.
+4. Bring every element of `b` back to its place in `a` (`pa`).
+5. Rotate `a` until its minimum is at the top.
 
-**Upper bound:** each of the `n` extractions costs at most `n/2` rotations plus one `pb`, and the return costs `n` `pa`:
+**Upper bound:** there are `n` insertions and each one costs at most `n` rotations plus one push, so `ops = O(n²)`. Choosing the cheapest element evaluates `n` candidates for each insertion, which is O(n²) evaluations per insertion in CPU time, but this does not generate operations.
 
-```
-ops ≤ n · (n/2 + 1) + n  =  O(n²)
-```
+**Why it fits low disorder:** when the input is almost sorted, most elements already have their target right next to them, so most insertions cost 0 or 1 rotation.
 
 **Space:** O(1) auxiliary (only stack `b`).
+
+> **First version.** The simple strategy was first a minimum extraction (an adaptation of selection sort). Testing showed it does not take advantage of partial order: with 500 numbers each moved a few dozen positions away from their place (disorder ≈ 15%), it reached **21 000 operations**, because each displaced element forces a rotation of almost the whole stack. It was replaced by the cheapest insertion, which uses about 4 300 operations on the same inputs.
 
 ### 2️⃣ Medium — Chunk sort · O(n√n)
 
@@ -233,29 +234,47 @@ The factor 2 in `k = 2√n` is a constant, so it reduces the number of operation
 
 **Space:** O(1) auxiliary. √n is computed with an integer loop, without `math.h`.
 
-### 3️⃣ Complex — Binary LSD radix sort · O(n log n)
+### 3️⃣ Complex — Three-way quicksort · O(n log n)
 
-Works on the normalized ranks, one bit at a time, from the least significant to the most significant:
+A **segment** is a set of consecutive ranks (`lo … lo+k−1`) sitting together at one of the four ends of the stacks: top of `a`, bottom of `a`, top of `b`, bottom of `b`. A segment of `k` elements is split into **thirds by rank**, with limits `p1 = lo + k/3` and `p2 = lo + 2k/3`, and each element goes straight to the end where its third will be processed:
+
+| Segment at | upper third → | middle third → | lower third → |
+|---|---|---|---|
+| top of `a` | bottom of `a` (`ra`) | top of `b` (`pb`) | bottom of `b` (`pb rb`) |
+| bottom of `a` | top of `a` (`rra`) | top of `b` (`rra pb`) | bottom of `b` (`rra pb rb`) |
+| top of `b` | top of `a` (`pa`) | bottom of `a` (`pa ra`) | bottom of `b` (`rb`) |
+| bottom of `b` | top of `a` (`rrb pa`) | bottom of `a` (`rrb pa ra`) | top of `b` (`rrb`) |
+
+Every move takes two steps: bring the element to the top of its own stack (`rra`/`rrb` if it is at a bottom), then send it from that top to the destination. The three thirds are then sorted recursively, **upper first, then middle, then lower**, so each one ends sorted on top of the previous one in `a`.
+
+- A segment at the bottom of a stack that occupies the **whole** stack is treated as being on top (saves one reverse rotation per element).
+- Segments of **at most 3** elements are brought to the top of `a` and sorted with a short fixed sequence: a 3-element bubble sort using `sa` and `pb sa pa` (at most 5 operations, optimal by exhaustive search), or `sort_three` when `a` holds only those 3.
+
+**Upper bound:** because the stack is normalized, every third again has consecutive ranks, so the pivots are always **exact**: the quadratic worst case of the classic quicksort cannot happen. Each recursion level moves every element once with at most 3 operations, and each level divides the size by 3:
+
+| n | sizes of the largest segment | levels | bound (3 · n · levels) | measured (mean) |
+|---|---|---|---|---|
+| 100 | 100 → 34 → 12 → 4 | 4 | 1 200 | ≈ 617 |
+| 500 | 500 → 167 → 56 → 19 → 7 | 5 | 7 500 | ≈ 4 146 |
 
 ```
-for each bit b in 0 … ⌈log₂ n⌉ − 1:
-    repeat |a| times:
-        if bit b of top(a) is 0 → pb
-        else                    → ra
-    while b is not empty → pa
+ops ≤ 3 · n · ⌈log₃ n⌉  =  O(n log n)
 ```
 
-The bit is read with `(value >> b) & 1`. Each pass is **stable**: it keeps the order established by the previous bits. After the last bit, the stack is fully sorted.
+**Space:** O(log n) for the recursion.
 
-**Upper bound:** `⌈log₂ n⌉` passes, each with at most `n` (`pb`/`ra`) plus `n` (`pa`):
+### Operation buffer and peephole pass
 
-```
-ops ≤ 2n · ⌈log₂ n⌉  =  O(n log n)
-```
+The operations are not printed immediately: `record_op` stores their codes in a buffer that **doubles** its capacity when full (each code is copied fewer than two times on average; `realloc` is not allowed). When the sort ends, `flush_ops` rewrites adjacent pairs and only then prints and counts:
 
-For 500 numbers: 9 bits, giving **6784 operations**.
+| Pair | Becomes |
+|---|---|
+| `ra rb` / `rb ra` | `rr` |
+| `rra rrb` / `rrb rra` | `rrr` |
+| `sa sb` / `sb sa` | `ss` |
+| `pa pb`, `pb pa`, `ra rra`, `rb rrb`, `rr rrr`, `sa sa`, `sb sb`, `ss ss` | nothing (they cancel) |
 
-**Space:** O(1) auxiliary.
+Every rule keeps the final state unchanged. The `--bench` counts are taken **after** this pass, so they describe what is actually printed. It saves about 6–9 % on the quicksort and about 3 % on the chunk sort.
 
 ---
 
@@ -265,36 +284,42 @@ The default strategy measures the disorder first, then picks the method whose co
 
 | Disorder | Method used | Complexity |
 |---|---|---|
-| `< 0.2` | Simple (minimum extraction) | O(n²) |
+| `< 0.2` | Simple (cheapest insertion) | O(n²) |
 | `0.2 ≤ d < 0.5` | Medium (chunks) | O(n√n) |
-| `≥ 0.5` | Complex (radix) | O(n log n) |
+| `≥ 0.5` | Complex (three-way quicksort) | O(n log n) |
 
 ### Rationale for the thresholds
 
-- **Low disorder (< 0.2):** most elements are already close to their final position. The minimum is almost always near the top, so the rotations per extraction are small and the simple method generates very few operations in practice. Its O(n²) worst case is not reached on this kind of input. *Example: 30 numbers with 11.26% disorder → 65 operations.*
+- **Low disorder (< 0.2):** most elements are already close to their final position, so inserting each one into its place costs very few rotations. The cheapest insertion exploits this directly: it always picks the element that is nearest to its target. *Measured: 500 numbers with ≈ 15% disorder → about 4 300 operations (max 4 523 over 25 runs); 100 numbers → about 500 (max 559).*
 - **Medium disorder (0.2 – 0.5):** the input is partially ordered. Chunks exploit this structure: elements of the same range tend to be close to each other, so fewer `ra` are spent skipping elements.
-- **High disorder (≥ 0.5):** the input behaves like random data, or worse. Radix sort guarantees an upper bound of `2n·⌈log₂ n⌉` operations **regardless of the initial order**, which gives a predictable worst case.
+- **High disorder (≥ 0.5):** the input behaves like random data, or worse. The three-way quicksort has exact pivots, so its bound of `3n·⌈log₃ n⌉` operations holds **regardless of the initial order**, and in practice it uses about 4 150 operations for 500 numbers whatever the disorder.
 
 The thresholds `0.2` and `0.5` are the ones defined by the subject. They split the range between "almost sorted", "partially sorted" and "random or reversed" input.
 
-> **Note.** In our tests, chunk sort often produces fewer operations than radix sort on random input of this size (≈ 5300 vs 6784 for 500 numbers), because the constant factor of `n√n` is small for `n ≤ 500`. We still use radix sort for high disorder because the subject requires an O(n log n) method in that regime, and because its bound does not depend on the distribution of the input.
-
+> **Note.** On random input of 500 numbers, the disorder is almost always between 0.45 and 0.55, so about half of the official benchmarks use the chunk sort and half the quicksort. Both stay under the "excellent" threshold in our measurements: the chunk sort reached at most 5 385 operations in 60 random runs (a narrow margin), the quicksort at most 4 192. If the chunk sort's margin is considered too small, the medium regime can use the quicksort instead (an O(n log n) method also respects the O(n√n) ceiling); it is a one-line change in `resolve_strat`.
 ---
 
 ## 📊 Performance
 
-Measured with random inputs and verified with `checker_linux`:
+Random distinct integers. Every output was replayed by an independent verifier that applies the operations and checks that `a` is sorted and `b` is empty.
 
-| Input size | `--simple` | `--medium` | `--complex` | Default (adaptive) | Required to pass |
+| Input size | `--simple` | `--medium` | `--complex` | Default (adaptive) | Excellent |
 |---|---|---|---|---|---|
 | 3 | ≤ 2 | ≤ 2 | ≤ 2 | ≤ 2 | — |
-| 5 | ≤ 12 | ≤ 12 | ≤ 12 | ≤ 12 | — |
-| 100 | ~1450 | **~600** | 1084 | 590 – 1084 | < 2000 ✅ |
-| 500 | ~32 000 | **~5350** | 6784 | 5290 – 6784 | < 12 000 ✅ |
+| 5 | ≤ 10 | ≤ 10 | ≤ 10 | ≤ 10 | — |
+| 100 | ~558 (max 620) | ~581 (max 633) | ~618 (max 645) | ~596 (max 643) | < 700 ✅ |
+| 500 | ~5 093 (max 5 350) | ~5 160 (max 5 385) | ~4 145 (max 4 192) | ~4 600 (max 5 386) | < 5 500 ✅ |
 
-With the default strategy, both benchmarks are at the **"good"** level (< 1500 / < 8000) and sometimes reach **"excellent"** (< 700 / < 5500) when the measured disorder selects the medium strategy.
+(Maxima measured over 300 runs for 100 numbers and 60 runs for 500 numbers.)
 
-Every strategy was tested on sizes 2, 3, 4, 5, 6, 10, 100 and 500: all results were `OK`.
+**Low-disorder input** (each number moved a few dozen positions from its place, disorder ≈ 15%), where the default strategy uses the simple method:
+
+| Input size | Default (adaptive) | Excellent |
+|---|---|---|
+| 100 | ~504 (max 559) | < 700 ✅ |
+| 500 | ~4 289 (max 4 523) | < 5 500 ✅ |
+
+All permutations of 1 to 6 numbers were tested exhaustively with every strategy: all `OK`.
 
 ---
 
@@ -314,14 +339,20 @@ push_swap/
 ├── ops_swap_push.c      # sa, sb, ss, pa, pb
 ├── ops_rotate.c         # ra, rb, rr
 ├── ops_rev_rotate.c     # rra, rrb, rrr
-├── record.c             # prints each operation and counts it
+├── record.c             # stores each operation in a growable buffer
+├── optimize.c           # peephole pass, then prints and counts the operations
 ├── moves.c              # bring_to_top_a / bring_to_top_b (shortest path)
 ├── disorder.c           # disorder metric
 ├── index.c              # normalization to ranks 0 … n-1
 ├── sort_small.c         # 2, 3, 4 and 5 elements
-├── sort_simple.c        # O(n²)       minimum extraction
+├── sort_simple.c        # O(n²)       cheapest insertion (Turk)
+├── turk_target.c        # Turk: target position in a and in b
+├── turk_rot.c           # Turk: cost of the 4 rotation combinations, rr/rrr
 ├── sort_medium.c        # O(n√n)      chunk sort
-├── sort_complex.c       # O(n log n)  radix sort
+├── sort_complex.c       # O(n log n)  three-way quicksort (partition + recursion)
+├── quick_loc.c          # quicksort: read / move an element between the 4 ends
+├── dest_loc.c           # quicksort: destination of each third, normalization
+├── quick_base.c         # quicksort: segments of at most 3 elements
 ├── dispatch.c           # strategy selection and sorting flow
 ├── bench.c              # --bench output
 └── libft/               # our own C library
@@ -340,10 +371,12 @@ This project was developed by two learners. Both of us took part in the design d
 - Argument and flag parsing, input validation and error handling
 - Disorder metric (`disorder.c`)
 - Base of `main.c` and the stack utilities
+- Quicksort location helpers: reading and moving an element between the four ends (`quick_loc.c`), destinations of the thirds and normalization of a location (`dest_loc.c`)
+- Integration of the three-way quicksort, the cheapest insertion (simple strategy), and the operation buffer
 
 ### gbaccell
 - Normalization (`index.c`)
-- Sorting algorithms: small cases, simple (O(n²)), medium (O(n√n)) and complex (O(n log n))
+- Sorting algorithms: small cases, first version of simple (minimum extraction), medium (O(n√n)) and first version of complex (radix sort)
 - Movement helpers and stack queries (`moves.c`, `stack_query.c`)
 - Strategy dispatch and adaptive logic (`dispatch.c`)
 - Benchmark mode (`bench.c`)
@@ -356,9 +389,13 @@ This project was developed by two learners. Both of us took part in the design d
 ### References
 - [Big O notation — Wikipedia](https://en.wikipedia.org/wiki/Big_O_notation)
 - [Inversion (discrete mathematics) — Wikipedia](https://en.wikipedia.org/wiki/Inversion_(discrete_mathematics)) — the basis of the disorder metric
-- [Selection sort — Wikipedia](https://en.wikipedia.org/wiki/Selection_sort)
+- [Insertion sort — Wikipedia](https://en.wikipedia.org/wiki/Insertion_sort) — the idea behind the cheapest insertion
+- [Selection sort — Wikipedia](https://en.wikipedia.org/wiki/Selection_sort) — used in our first version of the simple strategy
 - [Bucket sort — Wikipedia](https://en.wikipedia.org/wiki/Bucket_sort) — the idea behind chunk sorting
-- [Radix sort — Wikipedia](https://en.wikipedia.org/wiki/Radix_sort)
+- [Radix sort — Wikipedia](https://en.wikipedia.org/wiki/Radix_sort) — used in our first version
+- [Quicksort — Wikipedia](https://en.wikipedia.org/wiki/Quicksort) and C. A. R. Hoare, "Quicksort", *The Computer Journal* 5(1), 1962
+- J. L. Bentley, M. D. McIlroy, "Engineering a sort function", *Software: Practice and Experience* 23(11), 1993 — three-way partitioning
+- [Peephole optimization — Wikipedia](https://en.wikipedia.org/wiki/Peephole_optimization)
 - [Doubly linked list — Wikipedia](https://en.wikipedia.org/wiki/Doubly_linked_list)
 - [Bitwise operations in C — Wikipedia](https://en.wikipedia.org/wiki/Bitwise_operations_in_C)
 - The push_swap subject (v1.2) and the `checker_linux` binary provided by 42
@@ -371,4 +408,6 @@ We used **Claude** (Anthropic) as a learning assistant, in line with the AI guid
 - **Help with reasoning:** explanations of concepts we had not used before, such as bitwise operations (`>>` and `&`), traversing a circular list, the idea behind chunk sorting and radix sort, and complexity arguments. Each function was explained with its idea, its steps and an incomplete skeleton, which **we filled in ourselves**. The errors we made were explained to us so that we could fix them and understand why they were wrong.
 - **Testing:** running the program against the checker with random inputs of different sizes, every strategy and edge cases (already sorted input, duplicates, invalid arguments, `int` limits), and measuring the number of operations for the benchmarks.
 
-All the code in this repository was written by us. We reviewed it together and can explain and defend every part of it.
+- **Code generation (later stage):** after the mandatory part was working with radix sort, the three-way quicksort (partition, recursion and base case in `sort_complex.c` and `quick_base.c`), the cheapest insertion used by the simple strategy (`sort_simple.c`, `turk_target.c`, `turk_rot.c`, after testing showed the minimum extraction failed on low-disorder input), the operation buffer and peephole pass (`record.c`, `optimize.c`) were generated with Claude, then integrated, tested and studied by us. The location helpers they rely on (`quick_loc.c`, `dest_loc.c`) were written by elsouza, step by step, with explanations and reviews.
+
+Everything else was written by us. We reviewed all of it together, including the generated parts, and can explain and defend every part of it.

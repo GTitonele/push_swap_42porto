@@ -12,19 +12,6 @@
 
 #include "push_swap.h"
 
-/*=================== CONSULTAS NA PILHA (nao movem nada) ====================*/
-
-/*
-** Todas percorrem a lista circular com um contador ate s->size
-** (nunca esperar NULL: a lista e circular).
-** "pos" = distancia do topo: 0 e o topo, s->size - 1 e o fundo.
-*/
-
-/*
-** is_sorted: retorna 1 se a pilha esta em ordem crescente do topo ao
-** fundo (cada content < content do proximo), 0 caso contrario.
-** Pilha vazia ou com 1 elemento esta ordenada.
-*/
 int	is_sorted(t_stack *s)
 {
 	t_node	*node;
@@ -41,9 +28,6 @@ int	is_sorted(t_stack *s)
 	}
 	return (1);
 }
-/*
-** find_min_pos: retorna a pos do MENOR valor da pilha.
-*/
 
 int	find_min_pos(t_stack *s)
 {
@@ -69,9 +53,6 @@ int	find_min_pos(t_stack *s)
 	return (pos);
 }
 
-/*
-** find_max_pos: retorna a pos do MAIOR valor da pilha.
-*/
 int	find_max_pos(t_stack *s)
 {
 	t_node	*node;
@@ -96,10 +77,6 @@ int	find_max_pos(t_stack *s)
 	return (pos);
 }
 
-/*
-** get_max: retorna o MAIOR valor (content) da pilha.
-** Util no radix para saber quantos bits sao necessarios.
-*/
 int	get_max(t_stack *s)
 {
 	t_node	*node;

@@ -3,40 +3,63 @@
 /*                                                        :::      ::::::::   */
 /*   sort_simple.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: gbaccell <gbaccell@student.42.fr>          +#+  +:+       +#+        */
+/*   By: elsouza <elsouza@student.42porto.com>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/11/17 15:00:00 by gbaccell          #+#    #+#             */
-/*   Updated: 2026/11/18 13:41:01 by gbaccell         ###   ########.fr       */
+/*   Created: 2026/11/20 15:40:00 by elsouza           #+#    #+#             */
+/*   Updated: 2026/11/20 15:40:00 by elsouza          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "push_swap.h"
 
-/*======================== ESTRATEGIA SIMPLE - O(n^2) ========================*/
+static t_rot	cheapest(t_ctx *ctx)
+{
+	t_node	*node;
+	t_rot	best;
+	t_rot	cur;
+	int		i;
 
-/*
-** sort_simple: extracao do minimo (adaptacao do selection sort).
-**   1. enquanto a->size > 3 (ou > 0):
-**        pos = find_min_pos(ctx->a);
-**        bring_to_top_a(ctx, pos);    leva o menor ao topo
-**        pb(ctx);                     guarda em b
-**   2. sort_three(ctx) para o que sobrou (se parou em 3)
-**   3. enquanto b nao vazia -> pa(ctx);
-**      (b tem os menores com o maior no topo, entao voltam em ordem)
-**
-** Complexidade (em operacoes):
-**   n extracoes x ate n/2 rotacoes cada = O(n^2)
-**   Espaco: O(1) extra (so a pilha b).
-** Com disorder baixo o menor quase sempre ja esta perto do topo,
-** por isso o adaptive usa este para disorder < 0.2.
-*/
+	node = ctx->a->top;
+	best = best_rot(0, ctx->a->size,
+			target_in_b(ctx->b, node->content), ctx->b->size);
+	node = node->next;
+	i = 1;
+	while (i < ctx->a->size)
+	{
+		cur = best_rot(i, ctx->a->size,
+				target_in_b(ctx->b, node->content), ctx->b->size);
+		if (rot_cost(cur) < rot_cost(best))
+			best = cur;
+		node = node->next;
+		i++;
+	}
+	return (best);
+}
+
+static void	push_back(t_ctx *ctx)
+{
+	while (ctx->b->size > 0)
+	{
+		bring_to_top_a(ctx, target_in_a(ctx->a, ctx->b->top->content));
+		pa(ctx);
+	}
+}
+
 void	sort_simple(t_ctx *ctx)
 {
-	while (ctx->a->size > 0)
+	if (ctx->a->size <= 5)
 	{
-		bring_to_top_a(ctx, find_min_pos(ctx->a));
+		sort_small(ctx);
+		return ;
+	}
+	while (ctx->a->size > 3 && ctx->b->size < 2)
+		pb(ctx);
+	while (ctx->a->size > 3)
+	{
+		apply_rot(ctx, cheapest(ctx));
 		pb(ctx);
 	}
-	while (ctx->b->size > 0)
-		pa(ctx);
+	sort_three(ctx);
+	push_back(ctx);
+	bring_to_top_a(ctx, find_min_pos(ctx->a));
 }
